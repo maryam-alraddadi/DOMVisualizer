@@ -1,20 +1,20 @@
 let canvas = document.getElementById("canvas");
 let context = canvas.getContext("2d");
 let body = document.childNodes[1];
+canvas.width = window.innerWidth;
 
 var radius = 25;
 var maxDepth = 0;
 var nodes = [];
 var circle;
-context.font = "12px Monaco";
-context.textAlign = "center";
 
 var nodeFill = "#cddff4";
 var expandButton = "#ffde99";
 var gray = "#333333";
 var lightGray = "#d2d3d4";
+var almostwhite = "#d6d6d6";
 var currentTree;
-
+var attributesButton = "#da7f8f";
 const createTree = (node, parentNode, start, end, depth) => {
   if (depth > maxDepth) {
     maxDepth = depth;
@@ -31,6 +31,7 @@ const createTree = (node, parentNode, start, end, depth) => {
     expandButton: { x: 0, y: 0, width: 0, height: 0 },
     isExpanded: true,
     attributesButton: { x: 0, y: 0, width: 0, height: 0 },
+    attributesOpen: false,
   };
 
   var childDepth = depth + 1;
@@ -41,7 +42,6 @@ const createTree = (node, parentNode, start, end, depth) => {
 
   for (let i = 0; i < childCount; i++) {
     childStart = start + i * width;
-    //console.log(node.children);
     child = createTree(
       node.childNodes[i],
       newNode,
@@ -56,70 +56,19 @@ const createTree = (node, parentNode, start, end, depth) => {
 };
 
 const drawNodes = (node, height) => {
-  // console.log(node);
   if (!node) return;
   var x = node.start + (node.end - node.start) / 2;
   var y = node.depth * height + radius;
-  //console.log(` x: ${x} y: ${y} `);
 
-  //console.log(node);
-  // array of positions
   node.position.x = x;
   node.position.y = y;
-  nodes.push(node);
 
-  // draw line from parent to child
-  node.children.forEach((child) => {
-    //console.log(child);
-    var childX = child.start + (child.end - child.start) / 2;
-    var childY = child.depth * height + radius;
+  context.font = "12px Monaco";
+  context.textAlign = "center";
 
-    /* context.beginPath();
-    console.log(child.DOMNode.innerText);
-    var text = child.DOMNode.innerText;
-    var textWidth = context.measureText(text).width;
-    var lineHeight = 12 * 1.286;
-    context.fillText(text, childX + 5, childY + 25);
-    context.strokeRect(childX + 5, childY + 15, textWidth, lineHeight);
-    context.closePath(); */
-    context.strokeStyle = lightGray;
-
-    context.beginPath();
-    context.moveTo(x, y + radius);
-    context.lineTo(childX, childY);
-    context.stroke();
-    context.closePath();
-
-    if (child.DOMNode.hasChildNodes && child.DOMNode.nodeType == 1) {
-      if (child.isExpanded) {
-        let text = "+";
-        context.fillStyle = expandButton;
-        context.fillRect(childX - 40, childY - 10, 15, 15);
-        context.font = "16px Monaco";
-        context.fillStyle = gray;
-        context.fillText(text, childX - 32, childY + 1);
-
-        child.expandButton.x = childX - 40;
-        child.expandButton.y = childY - 10;
-        child.expandButton.width = 15;
-        child.expandButton.height = 15;
-      } else {
-        let text = "-";
-        context.fillStyle = expandButton;
-        context.fillRect(childX - 40, childY - 10, 15, 15);
-        context.font = "16px Monaco";
-        context.fillStyle = gray;
-        context.fillText(text, childX - 32, childY + 1);
-
-        child.children = [];
-      }
-    }
-    drawNodes(child, height);
-    // drawNodes(child, height);
-  });
-
+  // draw nodes
   if (node.DOMNode.nodeType == 3) {
-    // draw rect
+    // draw text nodes in rect
     if (node.DOMNode.nodeValue.trim().length > 0) {
       var text = node.DOMNode.nodeValue;
       var textWidth = context.measureText(text).width;
@@ -132,9 +81,8 @@ const drawNodes = (node, height) => {
       context.closePath();
     }
   } else if (node.DOMNode.nodeType == 1) {
-    // draw cicle
+    // draw elemnt nodes in circles
     context.beginPath();
-    // start angle = 0 end angle Math.PI * 2
     circle = new Path2D();
     circle.arc(x, y, radius, 0, Math.PI * 2, false);
     context.font = "12px Monaco";
@@ -144,29 +92,67 @@ const drawNodes = (node, height) => {
     context.fillText(node.DOMNode.tagName.toLowerCase(), x, y + 2);
     context.closePath();
   }
+
+  node.children.forEach((child) => {
+    var childX = child.start + (child.end - child.start) / 2;
+    var childY = child.depth * height + radius;
+
+    // draw line from parent to child
+    context.strokeStyle = lightGray;
+    context.beginPath();
+    context.moveTo(x, y + radius);
+    context.lineTo(childX, childY);
+    context.stroke();
+    context.closePath();
+
+    // draw expand button
+    var expandButtonText;
+    if (child.DOMNode.hasChildNodes && child.DOMNode.nodeType == 1) {
+      if (child.isExpanded) {
+        expandButtonText = "+";
+      } else {
+        expandButtonText = "-";
+        child.children = [];
+      }
+
+      context.fillStyle = expandButton;
+      context.fillRect(childX - 40, childY - 15, 15, 15);
+      context.font = "16px Monaco";
+      context.fillStyle = gray;
+      context.fillText(expandButtonText, childX - 32, childY - 2);
+
+      child.expandButton.x = childX - 40;
+      child.expandButton.y = childY - 15;
+      child.expandButton.width = 15;
+      child.expandButton.height = 15;
+
+      // draw attributes button
+      context.fillStyle = attributesButton;
+      context.fillRect(childX - 40, childY + 5, 18, 12);
+      context.font = "10px Monaco";
+      context.fillStyle = gray;
+      context.fillText("..", childX - 32, childY + 12);
+
+      child.attributesButton.x = childX - 40;
+      child.attributesButton.y = childY + 5;
+      child.attributesButton.width = 18;
+      child.attributesButton.height = 12;
+    }
+    drawNodes(child, height);
+  });
 };
 
-//initial depth 0 start with 0 and end: canvas.width
 var doc = createTree(body, null, 0, canvas.width, 0);
 currentTree = doc;
 levelHeight = canvas.height / (maxDepth + 1);
 drawNodes(doc, levelHeight);
 
 canvas.addEventListener("click", (e) => {
-  //console.log(e);
-
   let pos = {
     x: e.clientX - canvas.getBoundingClientRect().left,
     y: e.clientY - canvas.getBoundingClientRect().top,
   };
 
-  /* var lol = findClickedShape(currentTree, pos.x, pos.y);
-  console.log(lol); */
-  //found = findNode(currentTree, pos.x, pos.y);
-  //console.log("found");
-  //console.log(found); // top y
-  // left x
-  // detect square click
   clickedExpand = findClickedExpandButton(currentTree, pos.x, pos.y);
   if (clickedExpand) {
     if (clickedExpand.isExpanded) {
@@ -181,24 +167,45 @@ canvas.addEventListener("click", (e) => {
     }
     return;
   }
-});
 
-canvas.addEventListener("mousemove", (e) => {
-  let pos = {
-    x: e.clientX - canvas.getBoundingClientRect().left,
-    y: e.clientY - canvas.getBoundingClientRect().top,
-  };
-  let htmlBox = document.querySelector("#htmlContent");
-  found = findNode(currentTree, pos.x, pos.y);
-  if (found) {
-    console.log("fdfdfdf");
-    htmlBox.style.display = "block";
-    htmlBox.innerText = found.DOMNode.outerHTML;
-    return;
-  } else {
-    htmlBox.style.display = "none";
+  clickedAttrButton = findClickedAttributesButton(currentTree, pos.x, pos.y);
+
+  if (clickedAttrButton) {
+    if (!clickedAttrButton.attributesOpen) {
+      clickedAttrButton.attributesOpen = true;
+      drawNameVlueAttr(clickedAttrButton.DOMNode.attributes);
+    } else {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      clickedAttrButton.attributesOpen = false;
+      drawNodes(currentTree, levelHeight);
+    }
   }
 });
+
+const drawAttributes = (attributes) => {
+  let text;
+  let offset = 1;
+  context.fillStyle = almostwhite;
+  context.fillRect(10, clickedAttrButton.position.y - 15, 200, 60);
+  context.fillStyle = "black";
+  context.textAlign = "left";
+  if (attributes.length <= 0) {
+    context.fillText(
+      "No Attributes",
+      20,
+      clickedAttrButton.position.y + offset
+    );
+  }
+  for (let i = 0; i < attributes.length; i++) {
+    text =
+      clickedAttrButton.DOMNode.attributes[i].nodeName +
+      ": " +
+      clickedAttrButton.DOMNode.attributes[i].nodeValue;
+
+    context.fillText(text, 20, clickedAttrButton.position.y + offset);
+    offset += 20;
+  }
+};
 
 const findClickedExpandButton = (node, x, y) => {
   var isInNodeExpandButton =
@@ -208,20 +215,12 @@ const findClickedExpandButton = (node, x, y) => {
     x < node.expandButton.x + node.expandButton.width;
 
   var child;
-  var i;
-
-  /*   if (
-    Math.sqrt(
-      (pos.x - node.position.x) * (pos.x - node.position.x) +
-        (pos.y - node.position.y) * (pos.y - node.position.y)
-    ) < 20
-  ) */
 
   if (isInNodeExpandButton) {
     return node;
   }
 
-  for (i = 0; i < node.DOMNode.childElementCount; i++) {
+  for (let i = 0; i < node.DOMNode.childElementCount; i++) {
     child = node.children[i];
 
     if (x > child.start && x < child.end) {
@@ -232,23 +231,24 @@ const findClickedExpandButton = (node, x, y) => {
   return null;
 };
 
-const findNode = (node, x, y) => {
-  /*   if (
-    Math.sqrt(
-      (pos.x - node.position.x) * (pos.x - node.position.x) +
-        (pos.y - node.position.y) * (pos.y - node.position.y)
-    ) < 20
-  ) */
+const findClickedAttributesButton = (node, x, y) => {
+  var isInNodeAttributesButton =
+    y > node.attributesButton.y &&
+    y < node.attributesButton.y + node.attributesButton.height &&
+    x > node.attributesButton.x &&
+    x < node.attributesButton.x + node.attributesButton.width;
 
-  if (isInNode) {
+  var child;
+
+  if (isInNodeAttributesButton) {
     return node;
   }
 
-  for (i = 0; i < node.DOMNode.childElementCount; i++) {
+  for (let i = 0; i < node.DOMNode.childElementCount; i++) {
     child = node.children[i];
 
     if (x > child.start && x < child.end) {
-      return findNode(child, x, y);
+      return findClickedAttributesButton(child, x, y);
     }
   }
 
